@@ -17,5 +17,5 @@ class Postman
   end
 end
 
-mailing_data = Store.new('data/exm.csv').data
-Postman.new.sendMessages(mailing_data)
+# mailing_data = Store.new('data/exm.csv').data
+# Postman.new.sendMessages(mailing_data)

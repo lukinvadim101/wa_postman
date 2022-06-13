@@ -1,4 +1,4 @@
-# require 'wa_postman'
+# require 'wa_sender'
 
 desc 'WA Posts Manager'
 task :run, [:path] do |_t, args|
@@ -10,7 +10,7 @@ task :run, [:path] do |_t, args|
   args = opts.order!(ARGV) {}
   opts.parse!(args)
 
-  Postman.new.sendMessages(Store.new(options[:path]).data)
+  Sender.new.(Store.new(options[:path]).data)
 end
 
 # rake run -- --path data/exm.csv

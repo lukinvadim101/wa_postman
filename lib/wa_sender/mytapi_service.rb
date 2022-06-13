@@ -2,7 +2,7 @@ require 'uri'
 require 'net/http'
 require 'openssl'
 
-class WhatsApp_Connector
+class MyTapi_Service
   PRODUCT_ID = 'a71f9568-8975-40a7-8f26-ddd6a45c9b95'
   TOKEN = '8d4f4db4-ab8c-4e7d-b578-41e985064142'
   PHONE_ID = 20207
@@ -15,7 +15,7 @@ class WhatsApp_Connector
     @http.verify_mode = OpenSSL::SSL::VERIFY_NONE
   end
 
-  def formMessage(phone, message)
+  def sendMessage(phone, message)
     request = Net::HTTP::Post.new(@url)
     request["x-maytapi-key"] = "#{TOKEN}"
     request["content-type"] = 'application/json'

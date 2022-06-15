@@ -1,6 +1,6 @@
 require 'csv'
 
-class CSV_reader
+class CSVReader
   attr_accessor :csv_data
 
   def initialize(path)

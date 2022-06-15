@@ -1,64 +1,69 @@
-require_relative 'wa_sender/mytapi_service'
+require_relative 'wa_sender/maytapi_service'
 require_relative 'wa_sender/store'
 require_relative 'wa_sender/csv_reader'
+require_relative 'wa_sender/message_templates/basic_template'
+require_relative 'wa_sender/message_templates/due_payment'
+require_relative 'wa_sender/message_templates/overdue_payment'
+require_relative 'wa_sender/message_templates/advance_payment'
 
 class Sender
-  def initialize(data)
-    @data = data
+  attr_accessor :client, :data
+  def initialize(store)
+    @data = store
+    @client = MayTapiService.new
   end
 
   def execute(term)
-    @account_to_compare = @data[0][:account]
-    @debt_sum = 0
-    @template = @data[0][:template]
+    template = BasicTemplate.new.execute(term)
+    debt_storage = 0
+    invoices_count = 0
 
-    @data.each do |row|
-      invoice_code = row[:code]
+    data.each_with_index  do |row, index|
+      invoice = row[:code]
+      invoice_date = row[:invoice_date]
       debt = row[:total][1...-4].sub(',', '').to_f
       account = row[:account]
+      phone = row[:phone]
+      link_to_locate = "https://locate.positrace.com/#billing/invoices/{invoice_id}"
 
-      if account == @account_to_compare && row != @data.last
-        count_debt(account, debt)
+      if row != data.last
+        account_to_compare = data[index+1][:account]
+      else
+        account_to_compare = data[index-1][:account]
+      end
+
+      if account == account_to_compare
+        debt_storage += debt
+        invoices_count += 1
         next
       end
 
-      debt = @debt_sum.zero? ? debt : @debt_sum
+      debt = debt_storage.zero? ? debt : debt_storage + debt
+      debt = "$#{debt.round(2)} MXN"
+      invoice = invoices_count.zero? ? invoice : invoices_count + 1
+      overdue_days = count_overdue_days(invoice_date)
 
-      public_send("#{term}_payment_template", total: debt,  code:  invoice_code)
+      message_data = {
+        debt: debt,
+        invoice: invoice,
+        overdue_days: overdue_days,
+        link_to_locate:link_to_locate,
+        account:account
+      }
 
-      # MyTapi_Service.new.sendMessage(phone, @template)
-      @debt_sum = 0
+      debt_storage = 0
+      invoices_count = 0
+
+      message = template.handler(message_data)
+      client.send_message(phone, message)
     end
-  end
-
-  def count_debt(account, row_total)
-    @debt_sum += row_total
-    @account_to_compare = account
   end
 
   def count_overdue_days(invoice_date)
     (DateTime.now.to_date - Date.strptime(invoice_date, '%m/%d/%Y')).to_i
   end
-
-  def advance_payment_template(*args)
-    @template.sub! '[ACCOUNT]', args[:account]
-    @template.sub! '[INSERT LINK TO LOCATE]', args[:link_to_locate]
-  end
-
-  def due_payment_template(*args)
-    @template.sub! '[CODE]', args[:code]
-    @template.sub! '[TOTAL]', args[:total]
-    # @template.sub! '[INSERT OVERDUE TIME IN DAYS]', overdue_time_days
-    @template.sub! '[INSERT PAYMENT OPTIONS/LINK TO LOCATE]', args[:link_to_locate]
-  end
-
-  def overdue_payment_template(*args)
-    @template.sub! '[INSERT PAYMENT OPTIONS/LINK TO LOCATE]', args[:link_to_locate]
-    @template.sub! '[CODE]', args[:code]
-    @template.sub! '[TOTAL]', args[:total]
-  end
 end
 
-csv_data = CSV_reader.new('data/alpha_csv.csv').csv_data
-mailing_data = Store.new(csv_data).data
-Sender.new(mailing_data).execute('term')
+csv_data = CSVReader.new('data/alpha_csv.csv').csv_data
+store = Store.new(csv_data).data
+Sender.new(store).execute('advance')

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class BasicTemplate
   def execute(term)
     public_send("#{term}_payment")

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # require 'wa_sender'
 
 desc 'WA Posts Manager'

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Store
   attr_accessor :data
 

@@ -25,13 +25,10 @@ class MayTapiService
 
     response = @http.request(request)
 
-    q = JSON.parse response.read_body
-
-    puts q['data']['msgId']
+    JSON.parse response.read_body
   end
 
   def get_logs
-    # % curl -X GET "https://api.maytapi.com/api/a71f9568-8975-40a7-8f26-ddd6a45c9b95/logs" -H "accept: application/json" -H "x-maytapi-key: 8d4f4db4-ab8c-4e7d-b578-41e985064142"
     request = Net::HTTP::Get.new("https://api.maytapi.com/api/#{PRODUCT_ID}/logs")
     request['x-maytapi-key'] = TOKEN.to_s
     request['content-type'] = 'application/json'

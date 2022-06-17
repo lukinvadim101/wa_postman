@@ -2,31 +2,27 @@
 
 require_relative 'wa_sender/maytapi_service'
 require_relative 'wa_sender/store'
-require_relative 'wa_sender/csv_reader'
+require_relative 'wa_sender/csv_manager'
 require_relative 'wa_sender/message_templates/basic_template'
 require_relative 'wa_sender/message_templates/due_payment'
 require_relative 'wa_sender/message_templates/overdue_payment'
 require_relative 'wa_sender/message_templates/advance_payment'
 
 class Sender
-  attr_accessor :client, :data
+  attr_accessor :client, :data, :csv
 
   def initialize(store)
     @data = store
     @client = MayTapiService.new
+    @csv = CsvManager.new
   end
 
   def execute(term)
     template = BasicTemplate.new.execute(term)
-    debt_storage = 0
-    invoices_count = 0
+    storage = { debt: 0, invoice_count: 0 }
 
     data.each_with_index do |row, index|
-      invoice = row[:code]
       debt = row[:total][1...-4].sub(',', '').to_f
-      account = row[:account]
-      phone = row[:phone]
-      link_to_locate = 'https://locate.positrace.com/#billing/invoices/{invoice_id}'
 
       account_to_compare = if row != data.last
                              data[index + 1][:account]
@@ -34,47 +30,37 @@ class Sender
                              data[index - 1][:account]
                            end
 
-      if account == account_to_compare
-        debt_storage += debt
-        invoices_count += 1
+      if row[:account] == account_to_compare
+        storage[:debt] += debt
+        storage[:invoice_count] += 1
         next
       end
 
-      debt = debt_storage.zero? ? debt : debt_storage + debt
-      debt = "$#{debt.round(2)} MXN"
-      invoice = invoices_count.zero? ? invoice : invoices_count + 1
-      overdue_days = count_overdue_days(row[:invoice_date])
-
       message_data = {
-        debt: debt,
-        invoice: invoice,
-        overdue_days: overdue_days,
-        link_to_locate: link_to_locate,
-        account: account
+        debt: "$#{(storage[:debt].zero? ? debt : storage[:debt] + debt).round(2)} MXN",
+        invoice: storage[:invoice_count].zero? ? row[:code] : storage[:invoice_count] + 1,
+        overdue_days: count_overdue_days(row[:invoice_date]),
+        link_to_locate: 'https://locate.positrace.com/#billing/invoices/{invoice_id}',
+        account: row[:account]
       }
 
-      debt_storage = 0
-      invoices_count = 0
+      storage = { debt: 0, invoice_count: 0 }
 
-      message = template.handler(message_data)
-      # client.send_message(phone, message)
+      message = template.generate(message_data)
+      # client.send_message(row[:phone], message)
     end
   end
 
   def find_errors
     logs = client.get_logs['data']['list']
+    path = "#{timestamp}_errors_log"
 
-    logs.each do |key|
-      if key['data']['body']['type'] == 'error'
-        error_message = key['data']['body']['message']
-        # error_code = key['data']['body']['code']
-        error_phone_number = key['data']['body']['data']['to_number'][0..-6]
+    logs.each do |row|
+      if row['data']['body']['type'] == 'error'
+        message = row['data']['body']['message']
+        phone = row['data']['body']['data']['to_number'][0..-6]
 
-        puts "Error with: #{error_phone_number}; Message: \"#{error_message}\""
-
-        CSV.open("err.csv", "a+") do |csv|
-          csv << [error_phone_number, error_message]
-        end
+        csv.write(path, phone, message)
       end
     end
   end
@@ -82,10 +68,13 @@ class Sender
   def count_overdue_days(invoice_date)
     (DateTime.now.to_date - Date.strptime(invoice_date, '%m/%d/%Y')).to_i
   end
+
+  def timestamp
+    Time.now.strftime '%Y%m%d%H%M%S'
+  end
 end
 
-csv_data = CSVReader.new('data/alpha_csv.csv').csv_data
-store = Store.new(csv_data).data
-# Sender.new(store).execute('advance')
-
-# Sender.new(store).find_errors
+store = Store.new(CsvManager.new.read('data/alpha_csv.csv')).data
+sender = Sender.new(store)
+sender.execute('due')
+# sender.find_errors

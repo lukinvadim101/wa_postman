@@ -3,7 +3,6 @@
 require 'uri'
 require 'net/http'
 require 'openssl'
-require 'json'
 
 class MayTapiService
   PRODUCT_ID = 'a71f9568-8975-40a7-8f26-ddd6a45c9b95'
@@ -19,22 +18,23 @@ class MayTapiService
 
   def send_message(phone, message)
     request = Net::HTTP::Post.new(@url)
-    request['x-maytapi-key'] = TOKEN.to_s
-    request['content-type'] = 'application/json'
+    add_request_headers(request)
     request.body = "{\"to_number\": \"#{phone}\",\"type\": \"text\",\"message\": \"#{message}\"}"
 
     response = @http.request(request)
-
-    JSON.parse response.read_body
+    response.read_body
   end
 
   def get_logs
     request = Net::HTTP::Get.new("https://api.maytapi.com/api/#{PRODUCT_ID}/logs")
-    request['x-maytapi-key'] = TOKEN.to_s
-    request['content-type'] = 'application/json'
+    add_request_headers(request)
 
     response = @http.request(request)
+    response.read_body
+  end
 
-    JSON.parse response.read_body
+  def add_request_headers(request)
+    request['x-maytapi-key'] = TOKEN.to_s
+    request['content-type'] = 'application/json'
   end
 end

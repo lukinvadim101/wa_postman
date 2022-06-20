@@ -16,7 +16,7 @@ task :send, [:path] do |_t, args|
   store = Store.new(CsvManager.new.read(options[:path])).data
   sender = Sender.new(store)
   sender.execute(options[:term])
-  # sender.find_errors
+  # sender.find_mailing_errors
 end
 
 # rake send -- --path data/exm.csv --term advance

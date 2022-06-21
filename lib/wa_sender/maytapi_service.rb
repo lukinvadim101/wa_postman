@@ -3,6 +3,7 @@
 require 'uri'
 require 'net/http'
 require 'openssl'
+require 'json'
 
 class MayTapiService
   PRODUCT_ID = 'a71f9568-8975-40a7-8f26-ddd6a45c9b95'
@@ -22,7 +23,7 @@ class MayTapiService
     request.body = "{\"to_number\": \"#{phone}\",\"type\": \"text\",\"message\": \"#{message}\"}"
 
     response = @http.request(request)
-    response.read_body
+    JSON.parse response.read_body
   end
 
   def get_logs
@@ -30,7 +31,7 @@ class MayTapiService
     add_request_headers(request)
 
     response = @http.request(request)
-    response.read_body
+    JSON.parse response.read_body
   end
 
   def add_request_headers(request)

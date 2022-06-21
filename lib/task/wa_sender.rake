@@ -13,15 +13,12 @@ task :send, [:path] do |_t, args|
   args = opts.order!(ARGV) {}
   opts.parse!(args)
 
-  store = Store.new(CsvManager.new.read(options[:path])).data
+  store = Store.new(CsvManager.new.read(options[:path]))
   sender = Sender.new(store)
   sender.execute(options[:term])
   # sender.find_mailing_errors
 end
 
-# rake send -- --path data/exm.csv --term advance
-# rake send -- --path data/exm.csv --term due
-# rake send -- --path data/exm.csv --term overdue
-
-
-
+# rake send -- --path exm.csv --term advance
+# rake send -- --path exm.csv --term due
+# rake send -- --path exm.csv --term overdue

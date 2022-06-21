@@ -8,7 +8,7 @@ class CsvManager
   end
 
   def write(path, phone, message)
-    CSV.open(path, "a+") do |csv|
+    CSV.open(path, 'a+') do |csv|
       csv << [phone, message]
     end
   end
